@@ -2,8 +2,6 @@
 -- Craftitems --
 ----------------
 
-local S = draconis.S
-
 -- Local Math --
 
 local function round(n, dec)
@@ -44,19 +42,17 @@ local function infotext(str, format)
 end
 
 local function get_binder_desc(self)
-	local item_name = S("Dragonbinder")
-
-	local info = item_name .. "\n" .. correct_name(self.name)
-	if self.nametag ~= "" then
-		info = info.."\n" .. infotext(self.nametag)
+	local info = "Dragonbinder\n"..minetest.colorize("#a9a9a9", correct_name(self.name))
+	if self.nametag == "" then
+		info = info.."\n" .. infotext("Nameless Dragon")
 	else
-		info = info.."\n" .. infotext(S("Nameless Dragon"))
+		info = info.."\n" .. infotext(self.nametag or "Nameless Dragon")
 	end
 	if self.age then
 		info = info.."\n" .. infotext(self.age)
 	end
 	if self.color then
-		info = info.."\n" .. infotext(S(self.color), true)
+		info = info.."\n" .. infotext(self.color, true)
 	end
 	return info
 end
@@ -66,7 +62,7 @@ end
 -----------
 
 minetest.register_craftitem("draconis:dragon_bone", {
-	description = S("Dragon Bone"),
+	description = "Dragon Bone",
 	inventory_image = "draconis_dragon_bone.png",
 	groups = {bone = 1}
 })
@@ -75,7 +71,7 @@ table.insert(dragon_drops, "draconis:dragon_bone")
 
 for color, hex in pairs(draconis.colors_fire) do
 	minetest.register_craftitem("draconis:scales_fire_dragon_" .. color, {
-		description = S("Fire Dragon Scales") .. "\n" .. infotext(S(color), true),
+		description = "Fire Dragon Scales \n" .. infotext(color, true),
 		inventory_image = "draconis_dragon_scales.png^[multiply:#" .. hex,
 		groups = {dragon_scales = 1}
 	})
@@ -84,7 +80,7 @@ end
 
 for color, hex in pairs(draconis.colors_ice) do
 	minetest.register_craftitem("draconis:scales_ice_dragon_" .. color, {
-		description = S("Ice Dragon Scales") .. "\n" .. infotext(S(color), true),
+		description = "Ice Dragon Scales \n" .. infotext(color, true),
 		inventory_image = "draconis_dragon_scales.png^[multiply:#" .. hex,
 		groups = {dragon_scales = 1}
 	})
@@ -96,13 +92,13 @@ end
 ---------------
 
 minetest.register_craftitem("draconis:draconic_steel_ingot_fire", {
-	description = S("Fire-Forged Draconic Steel Ingot"),
+	description = "Fire-Forged Draconic Steel Ingot",
 	inventory_image = "draconis_draconic_steel_ingot_fire.png",
 	stack_max = 1
 })
 
 minetest.register_craftitem("draconis:draconic_steel_ingot_ice", {
-	description = S("Ice-Forged Draconic Steel Ingot"),
+	description = "Ice-Forged Draconic Steel Ingot",
 	inventory_image = "draconis_draconic_steel_ingot_ice.png",
 	stack_max = 1
 })
@@ -130,14 +126,13 @@ local dragon_eggs = {}
 
 for color in pairs(draconis.colors_fire) do
 	minetest.register_node("draconis:egg_fire_" .. color, {
-		description = S("Fire Dragon Egg") .. "\n" .. infotext(S(color), true),
+		description = "Fire Dragon Egg \n" .. infotext(color, true),
 		drawtype = "mesh",
 		paramtype = "light",
 		sunlight_propagates = true,
 		mesh = "draconis_egg.obj",
 		inventory_image = "draconis_fire_dragon_egg_" .. color .. ".png",
 		tiles = {"draconis_fire_dragon_egg_mesh_" .. color .. ".png"},
-		use_texture_alpha = "clip",
 		collision_box = {
 			type = "fixed",
 			fixed = {
@@ -277,14 +272,13 @@ end
 
 for color in pairs(draconis.colors_ice) do
 	minetest.register_node("draconis:egg_ice_" .. color, {
-		description = S("Ice Dragon Egg") .. "\n" .. infotext(S(color), true),
+		description = "Ice Dragon Egg \n" .. infotext(color, true),
 		drawtype = "mesh",
 		paramtype = "light",
 		sunlight_propagates = true,
 		mesh = "draconis_egg.obj",
 		inventory_image = "draconis_ice_dragon_egg_" .. color .. ".png",
 		tiles = {"draconis_ice_dragon_egg_mesh_" .. color .. ".png"},
-		use_texture_alpha = "clip",
 		collision_box = {
 			type = "fixed",
 			fixed = {
@@ -444,20 +438,18 @@ local function capture(player, ent)
 		meta:set_string("mob", ent.name)
 		meta:set_string("dragon_id", ent.dragon_id)
 		meta:set_string("staticdata", ent:get_staticdata())
-		meta:set_string("nametag", ent.nametag or S("Nameless Dragon"))
+		meta:set_string("nametag", ent.nametag or "Nameless Dragon")
 		meta:set_string("description", get_binder_desc(ent))
 		if stored_aging > 0 then
 			meta:set_int("timestamp", os.time())
 		end
 		player:set_wielded_item(stack)
-		if draconis.dragons[ent.dragon_id] then
-			draconis.dragons[ent.dragon_id].stored_in_item = true
-		end
+		draconis.dragons[ent.dragon_id].stored_in_item = true
 		ent.object:remove()
 		draconis.force_storage_save = true
 		return stack
 	else
-		minetest.chat_send_player(player:get_player_name(), S("This Dragonbinder already contains a Dragon"))
+		minetest.chat_send_player(player:get_player_name(), "This Dragonbinder already contains a Dragon")
 		return false
 	end
 end
@@ -473,6 +465,17 @@ end
 
 -- Items --
 
+local function reset_binder(itemstack, player)
+	local meta = itemstack:get_meta()
+	meta:set_string("mob", nil)
+	meta:set_string("dragon_id", nil)
+	meta:set_string("staticdata", nil)
+	meta:set_string("description", "Dragonbinder")
+
+	player:set_wielded_item(itemstack)
+	return itemstack
+end
+
 local function dragonbinder_use(itemstack, player, pointed_thing)
 	local meta = itemstack:get_meta()
 	local staticdata = meta:get_string("staticdata")
@@ -483,22 +486,18 @@ local function dragonbinder_use(itemstack, player, pointed_thing)
 	if player:get_player_control().sneak then
 		if stored_aging < 1 then
 			meta:set_int("stored_aging", 1)
-			minetest.chat_send_player(player:get_player_name(), S("Your Dragon will age while stored."))
+			minetest.chat_send_player(player:get_player_name(), "Your Dragon will age while stored.")
 		else
 			meta:set_int("stored_aging", 0)
-			minetest.chat_send_player(player:get_player_name(), S("Your Dragon will not age while stored."))
+			minetest.chat_send_player(player:get_player_name(), "Your Dragon will not age while stored.")
 		end
 		player:set_wielded_item(itemstack)
 		return itemstack
 	end
 	if id ~= "" then -- If the horn has a linked Dragon
-		if not draconis.dragons[id] then -- Clear data if linked Dragon is dead
-			meta:set_string("mob", nil)
-			meta:set_string("dragon_id", nil)
-			meta:set_string("staticdata", nil)
-			meta:set_string("description", S("Dragonbinder"))
-			player:set_wielded_item(itemstack)
-			return itemstack
+		-- Clear data if linked Dragon is dead
+		if not draconis.dragons[id] then
+			return reset_binder(itemstack, player)
 		end
 		local ent = pointed_thing.ref and pointed_thing.ref:get_luaentity()
 		if ent
@@ -518,7 +517,7 @@ local function dragonbinder_use(itemstack, player, pointed_thing)
 		else
 			ent.object:set_pos(player:get_pos())
 		end
-		minetest.chat_send_player(player:get_player_name(), S("Teleporting Dragon"))
+		minetest.chat_send_player(player:get_player_name(), "Teleporting Dragon")
 	else -- Link Dragon to Horn
 		local ent = pointed_thing.ref and pointed_thing.ref:get_luaentity()
 		if ent
@@ -533,64 +532,81 @@ local function dragonbinder_use(itemstack, player, pointed_thing)
 	return itemstack
 end
 
-local function dragonbinder_place(itemstack, player, pointed_thing)
-	local meta = itemstack:get_meta()
-	local pos = pointed_thing.above
-	local under = pointed_thing.type == "node" and pointed_thing.under
-	local node_def = creatura.get_node_def(under)
+local valid_mobs = {
+	["draconis:fire_dragon"] = true,
+	["draconis:ice_dragon"] = true
+}
+
+local function dragonbinder_release(itemstack, player, pointed_thing)
+	if not pointed_thing or pointed_thing.type ~= "node" then return end
+
+	local node_def = creatura.get_node_def(pointed_thing.under)
 	if node_def.on_rightclick then
-		return node_def.on_rightclick(under, minetest.get_node(under), player, itemstack)
+		return node_def.on_rightclick(pointed_thing.under, minetest.get_node(pointed_thing.under), player, itemstack)
 	end
-	if pos
-	and not minetest.is_protected(pos, player:get_player_name()) then
-		pos.y = pos.y + 3
-		local mob = meta:get_string("mob")
-		local staticdata = meta:get_string("staticdata")
-		local nametag = meta:get_string("nametag") or S("Nameless Dragon")
-		local id = meta:get_string("dragon_id")
-		if not draconis.dragons[id] then -- Clear data if linked Dragon is dead
-			meta:set_string("mob", nil)
-			meta:set_string("dragon_id", nil)
-			meta:set_string("staticdata", nil)
-			meta:set_string("description", "Dragonbinder")
-			player:set_wielded_item(itemstack)
-			return itemstack
-		end
-		if staticdata == ""
-		and id ~= ""
-		and draconis.dragons[id]
-		and draconis.dragons[id].stored_in_item then
-			staticdata = draconis.dragons[id].staticdata
-		end
-		if staticdata ~= "" then
-			local ent = minetest.add_entity(pos, mob, staticdata)
-			if id ~= ""
-			and draconis.dragons[id] then
-				draconis.dragons[id].stored_in_item = false
-			end
-			draconis.force_storage_save = true
-			local desc = S("Dragonbinder") .. "\n" .. correct_name(mob)
-			if nametag ~= "" then
-				desc = desc .. "\n" .. infotext(nametag)
-			end
-			meta:set_string("staticdata", nil)
-			meta:set_string("description", desc)
-			if ent and meta:get_int("timestamp") > 0 then
-				local time = meta:get_int("timestamp")
-				local diff = os.time() - time
-				ent:get_luaentity().time_in_horn = diff
-				meta:set_int("timestamp", os.time())
-			end
-			return itemstack
-		end
+
+	local pos = pointed_thing.above
+	if not pos or minetest.is_protected(pos, player:get_player_name()) then return end
+
+	local meta = itemstack:get_meta()
+	local mob = meta:get_string("mob")
+	if mob == "" then return end
+
+	-- Check for mobs other than Dragons being stored
+	if not valid_mobs[mob] then
+		local player_name = (player and player:get_player_name()) or "Unknown Player"
+		local player_pos = (player and player:get_pos()) or "Unknown Position"
+		core.log("action", ("Invalid use of a Dragonbinder at %s by %s"):format(
+			core.pos_to_string(player_pos, 1), player_name
+		))
+		return reset_binder(itemstack, player)
 	end
+
+	local id = meta:get_string("dragon_id")
+	if id == "" then return end
+
+	-- Clear binder if bound Dragon no longer exists
+	if not draconis.dragons[id] then
+		return reset_binder(itemstack, player)
+	end
+
+	local mob_staticdata = meta:get_string("staticdata")
+
+	-- Default to globally stored mob staticdata if none is found in item metadata
+	if mob_staticdata == "" and draconis.dragons[id].stored_in_item then
+		mob_staticdata = draconis.dragons[id].staticdata
+	end
+
+	if mob_staticdata == "" then return end
+
+	-- Release the Dragon!
+	local ent = minetest.add_entity(pos, mob, mob_staticdata)
+
+	draconis.dragons[id].stored_in_item = false
+	draconis.force_storage_save = true
+
+	local desc = "Dragonbinder\n" .. minetest.colorize("#a9a9a9", correct_name(mob))
+	local nametag = meta:get_string("nametag") or "Nameless Dragon"
+	if nametag ~= "" then desc = desc .. "\n"..infotext(nametag) end
+
+	meta:set_string("staticdata", nil)
+	meta:set_string("description", desc)
+
+	if meta:get_int("timestamp") > 0 then
+		local time = meta:get_int("timestamp")
+		local diff = os.time() - time
+		ent:get_luaentity().time_in_horn = diff
+		meta:set_int("timestamp", os.time())
+	end
+
+	return itemstack
 end
 
 minetest.register_craftitem("draconis:dragonbinder", {
-	description = S("Dragonbinder"),
+	description = "Dragonbinder",
 	inventory_image = "draconis_dragonbinder.png",
 	stack_max = 1,
-	on_place = dragonbinder_place,
+	on_place = dragonbinder_release,
 	on_secondary_use = dragonbinder_use
 })
 
@@ -602,13 +618,13 @@ minetest.register_alias("draconis:dragon_flute", "draconis:dragonbinder")
 --------------
 
 minetest.register_craftitem("draconis:dragonstone_crucible", {
-	description = S("Dragonstone Crucible"),
+	description = "Dragonstone Crucible",
 	inventory_image = "draconis_dragonstone_crucible.png",
 	stack_max = 1
 })
 
 minetest.register_craftitem("draconis:dragonstone_crucible_full", {
-	description = S("Dragonstone Crucible (Full)"),
+	description = "Dragonstone Crucible (Full)",
 	inventory_image = "draconis_dragonstone_crucible_full.png",
 	stack_max = 1,
 	groups = {not_in_creative_inventory = 1}
@@ -623,7 +639,7 @@ minetest.register_craftitem("draconis:dragonstone_crucible_full", {
 for color in pairs(draconis.colors_fire) do
 	-- Pick
 	minetest.register_tool("draconis:pick_dragonhide_fire_" .. color, {
-		description = S("Dragonhide Pickaxe"),
+		description = "Dragonhide Pickaxe",
 		inventory_image = "draconis_dragonhide_pick_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -647,7 +663,7 @@ for color in pairs(draconis.colors_fire) do
 	end
 	-- Shovel
 	minetest.register_tool("draconis:shovel_dragonhide_fire_" .. color, {
-		description = S("Dragonhide Shovel"),
+		description = "Dragonhide Shovel",
 		inventory_image = "draconis_dragonhide_shovel_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -671,7 +687,7 @@ for color in pairs(draconis.colors_fire) do
 	end
 	-- Axe
 	minetest.register_tool("draconis:axe_dragonhide_fire_" .. color, {
-		description = S("Dragonhide Axe"),
+		description = "Dragonhide Axe",
 		inventory_image = "draconis_dragonhide_axe_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -695,7 +711,7 @@ for color in pairs(draconis.colors_fire) do
 	end
 	-- Sword
 	minetest.register_tool("draconis:sword_dragonhide_fire_" .. color, {
-		description = S("Dragonhide Sword"),
+		description = "Dragonhide Sword",
 		inventory_image = "draconis_dragonhide_sword_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -723,7 +739,7 @@ end
 for color in pairs(draconis.colors_ice) do
 	-- Pickaxe
 	minetest.register_tool("draconis:pick_dragonhide_ice_" .. color, {
-		description = S("Dragonhide Pickaxe"),
+		description = "Dragonhide Pickaxe",
 		inventory_image = "draconis_dragonhide_pick_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -747,7 +763,7 @@ for color in pairs(draconis.colors_ice) do
 	end
 	-- Shovel
 	minetest.register_tool("draconis:shovel_dragonhide_ice_" .. color, {
-		description = S("Dragonhide Shovel"),
+		description = "Dragonhide Shovel",
 		inventory_image = "draconis_dragonhide_shovel_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -771,7 +787,7 @@ for color in pairs(draconis.colors_ice) do
 	end
 	-- Axe
 	minetest.register_tool("draconis:axe_dragonhide_ice_" .. color, {
-		description = S("Dragonhide Axe"),
+		description = "Dragonhide Axe",
 		inventory_image = "draconis_dragonhide_axe_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -795,7 +811,7 @@ for color in pairs(draconis.colors_ice) do
 	end
 	-- Sword
 	minetest.register_tool("draconis:sword_dragonhide_ice_" .. color, {
-		description = S("Dragonhide Sword"),
+		description = "Dragonhide Sword",
 		inventory_image = "draconis_dragonhide_sword_" .. color .. ".png",
 		wield_scale = {x = 1.5, y = 1.5, z = 1},
 		tool_capabilities = {
@@ -881,8 +897,7 @@ local function draconic_step(itemstack, player, pointed_thing)
 	for k, v in pairs(toolcaps.groupcaps) do
 		for i = 1, 3 do
 			local def_time = v.times[i]
-			local groupcap = current_caps.groupcaps and current_caps.groupcaps[k]
-			local current_time = round(groupcap.times[i] or 1, 0.1)
+			local current_time = round(current_caps.groupcaps[k].times[i], 0.1)
 			local time_diff = math.abs((def_time + speed_offset) - current_time)
 			if time_diff > 0.1 then
 				update = true
@@ -913,11 +928,9 @@ local elements = {"ice", "fire"}
 
 for _, element in pairs(elements) do
 
-local element_desc = (element == "ice" and "Ice") or "Fire"
-
-minetest.register_tool("draconis:pick_" .. element .. "_draconic_steel", {
-	description = S(element_desc .. "-Forged Draconic Steel Pickaxe"),
-	inventory_image = "draconis_" .. element .. "_draconic_steel_pick.png",
+minetest.register_tool("draconis:pick_"..element.."_draconic_steel", {
+	description = correct_name(element).."-Forged Draconic Steel Pickaxe",
+	inventory_image = "draconis_"..element.."_draconic_steel_pick.png",
 	wield_scale = {x = 2, y = 2, z = 1},
 	tool_capabilities = {
 		full_punch_interval = 4,
@@ -941,9 +954,9 @@ minetest.register_tool("draconis:pick_" .. element .. "_draconic_steel", {
 	after_use = draconic_step
 })
 
-minetest.register_tool("draconis:shovel_" .. element .. "_draconic_steel", {
-	description = S(element_desc .. "-Forged Draconic Steel Shovel"),
-	inventory_image = "draconis_" .. element .. "_draconic_steel_shovel.png",
+minetest.register_tool("draconis:shovel_"..element.."_draconic_steel", {
+	description = correct_name(element).."-Forged Draconic Steel Shovel",
+	inventory_image = "draconis_"..element.."_draconic_steel_shovel.png",
 	wield_scale = {x = 2, y = 2, z = 1},
 	tool_capabilities = {
 		full_punch_interval = 5.5,
@@ -963,9 +976,9 @@ minetest.register_tool("draconis:shovel_" .. element .. "_draconic_steel", {
 	after_use = draconic_step
 })
 
-minetest.register_tool("draconis:axe_" .. element .. "_draconic_steel", {
-	description = S(element_desc .. "-Forged Draconic Steel Axe"),
-	inventory_image = "draconis_" .. element .. "_draconic_steel_axe.png",
+minetest.register_tool("draconis:axe_"..element.."_draconic_steel", {
+	description = correct_name(element).."-Forged Draconic Steel Axe",
+	inventory_image = "draconis_"..element.."_draconic_steel_axe.png",
 	wield_scale = {x = 2, y = 2, z = 1},
 	tool_capabilities = {
 		full_punch_interval = 3,
@@ -985,9 +998,9 @@ minetest.register_tool("draconis:axe_" .. element .. "_draconic_steel", {
 	after_use = draconic_step
 })
 
-minetest.register_tool("draconis:sword_" .. element .. "_draconic_steel", {
-	description = S(element_desc .. "-Forged Draconic Steel Sword"),
-	inventory_image = "draconis_" .. element .. "_draconic_steel_sword.png",
+minetest.register_tool("draconis:sword_"..element.."_draconic_steel", {
+	description = correct_name(element).."-Forged Draconic Steel Sword",
+	inventory_image = "draconis_"..element.."_draconic_steel_sword.png",
 	wield_scale = {x = 2, y = 2, z = 1},
 	tool_capabilities = {
 		full_punch_interval = 1.2,
